@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ledger:schema:transaction-recorded:v1",
+  "title": "TransactionRecorded",
+  "description": "Published by the ledger on topic ledger.transaction-recorded.v1 for every recorded transaction, reversals included. Keyed by currency, so consumers see transactions of one currency in recording order. Delivery is at-least-once: deduplicate on transactionId.",
+  "type": "object",
+  "required": ["eventId", "eventType", "occurredAt", "transaction"],
+  "additionalProperties": false,
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid" },
+    "eventType": { "const": "ledger.transaction-recorded" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "transaction": {
+      "type": "object",
+      "required": ["id", "description", "currency", "recordedAt", "entries"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "format": "uuid" },
+        "description": { "type": "string" },
+        "currency": { "enum": ["EUR", "USD", "JPY"] },
+        "recordedAt": { "type": "string", "format": "date-time" },
+        "reverses": { "type": ["string", "null"], "format": "uuid" },
+        "entries": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["accountId", "direction", "amount", "balanceAfter"],
+            "additionalProperties": false,
+            "properties": {
+              "accountId": { "type": "string", "format": "uuid" },
+              "direction": { "enum": ["DEBIT", "CREDIT"] },
+              "amount": { "type": "string", "pattern": "^[0-9]{1,15}(\\.[0-9]{1,6})?$" },
+              "balanceAfter": { "type": "string", "pattern": "^-?[0-9]{1,15}(\\.[0-9]{1,6})?$" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

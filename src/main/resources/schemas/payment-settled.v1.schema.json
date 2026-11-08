@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ledger:schema:payment-settled:v1",
+  "title": "PaymentSettled",
+  "description": "Sent by the payment system on topic payments.settled when a payment settles. Keyed by paymentId. The ledger records one transaction per paymentId, however many times and under however many eventIds the message arrives.",
+  "type": "object",
+  "required": ["eventId", "paymentId", "merchantAccountId", "amount", "currency", "occurredAt"],
+  "additionalProperties": true,
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1, "maxLength": 128, "description": "Unique per delivery attempt; a re-send may carry a new one" },
+    "paymentId": { "type": "string", "minLength": 1, "maxLength": 128, "description": "Identity of the payment; the deduplication key" },
+    "merchantAccountId": { "type": "string", "format": "uuid", "description": "Ledger account credited with the settlement" },
+    "amount": { "type": "string", "pattern": "^[0-9]{1,15}(\\.[0-9]{1,6})?$", "description": "Positive decimal string in major units" },
+    "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+    "occurredAt": { "type": "string", "format": "date-time" }
+  }
+}

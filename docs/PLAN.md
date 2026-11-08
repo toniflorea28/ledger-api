@@ -196,19 +196,19 @@ com.<org>.ledger
 │   │                           PostingRules (balance, scale, currency, overdraft)
 │   └── error/                  LedgerError(code, pointer, detail), LedgerException
 ├── application/
-│   ├── port/in/                OpenAccount, RecordTransaction, ReverseTransaction,
-│   │                           RecordSettledPayment, queries (GetAccount, …)
-│   ├── port/out/               AccountRepository, TransactionRepository,
+│   ├── usecase/                inbound ports: OpenAccount, RecordTransaction,
+│   │                           ReverseTransaction, RecordSettledPayment, queries
+│   ├── port/                   outbound ports: AccountRepository, TransactionRepository,
 │   │                           OutboxRepository, IdempotencyStore, ProcessedPaymentStore,
 │   │                           IdGenerator, DbClock
 │   ├── service/                use-case implementations, @Transactional boundaries
 │   └── idempotency/            IdempotentExecutor (the §3.4 flow)
-├── adapter/
-│   ├── in/rest/                generated API interfaces, controllers, DTO mappers,
+├── adapter/                    (`inbound`/`outbound`: `in` is a Java keyword)
+│   ├── inbound/rest/              generated API interfaces, controllers, DTO mappers,
 │   │                           ProblemDetailsHandler, IdempotencyKey resolver
-│   ├── in/messaging/           PaymentSettledListener, message schema, DLT config
-│   ├── out/persistence/        JdbcClient repositories, row mappers
-│   └── out/messaging/          OutboxRelay (scheduled, leased), TransactionRecorded event
+│   ├── inbound/messaging/          PaymentSettledListener, message schema, DLT config
+│   ├── outbound/persistence/       JdbcClient repositories, row mappers
+│   └── outbound/messaging/         OutboxRelay (scheduled, leased), TransactionRecorded event
 └── infrastructure/             Spring config: Kafka, Jackson, tracing, scheduling,
                                 clock, leader lease, Flyway
 src/main/resources/

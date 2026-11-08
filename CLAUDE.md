@@ -21,7 +21,7 @@ Kafka, REST. The requirements are in the challenge PDF; the design is in
 
 ## Code layout (hexagonal)
 `domain` (pure Java) ← `application` (use cases, ports, transactions) ← `adapter`
-(`in/rest`, `in/messaging`, `out/persistence`, `out/messaging`) and `infrastructure`
+(`inbound/rest`, `inbound/messaging`, `outbound/persistence`, `outbound/messaging`) and `infrastructure`
 (Spring config). ArchUnit tests enforce this; do not add Spring or JDBC to `domain`.
 
 ## Conventions

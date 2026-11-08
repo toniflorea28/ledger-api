@@ -1,0 +1,464 @@
+openapi: 3.0.3
+info:
+  title: Ledger API
+  version: 1.0.0
+  description: |
+    Double-entry ledger for a payments platform.
+
+    Money is held in accounts and moves only through transactions: two or more
+    entries (debits and credits) that always balance. A recorded transaction is
+    never changed; a mistake is corrected by a reversal, which is a new transaction.
+
+    Amounts are decimal strings ("125.50", "15000"), never JSON numbers, with at most
+    as many decimal places as the currency allows (EUR 2, USD 2, JPY 0).
+
+    Every POST requires an `Idempotency-Key` header. Retrying with the same key and
+    the same body returns the first attempt's answer; the same key with a different
+    body is refused with 409.
+
+    Errors are RFC 9457 problem details (`application/problem+json`). Each problem
+    carries `errors[]`, where `code` says what rule failed and `pointer` is a JSON
+    Pointer into the request body naming the part at fault.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: accounts
+  - name: transactions
+
+paths:
+  /v1/accounts:
+    post:
+      tags: [accounts]
+      operationId: openAccount
+      summary: Open an account
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OpenAccountRequest'
+      responses:
+        '201':
+          description: Account opened (or replayed from an earlier attempt with the same key)
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /v1/accounts/{accountId}:
+    get:
+      tags: [accounts]
+      operationId: getAccount
+      summary: Read an account with its current balance
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+      responses:
+        '200':
+          description: The account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Account'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/accounts/{accountId}/entries:
+    get:
+      tags: [accounts]
+      operationId: listAccountEntries
+      summary: Entries posted to an account, newest first, each with the balance after it
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - name: cursor
+          in: query
+          description: Opaque cursor from a previous page's `nextCursor`
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+      responses:
+        '200':
+          description: One page of entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccountEntriesPage'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/accounts/{accountId}/balance:
+    get:
+      tags: [accounts]
+      operationId: getAccountBalanceAt
+      summary: Balance of an account as at a past instant
+      parameters:
+        - $ref: '#/components/parameters/AccountId'
+        - name: at
+          in: query
+          required: true
+          description: RFC 3339 instant; the balance after the last entry recorded at or before it
+          schema: { type: string, format: date-time }
+      responses:
+        '200':
+          description: The balance at that instant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalanceAt'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/settlement-accounts:
+    get:
+      tags: [accounts]
+      operationId: listSettlementAccounts
+      summary: The ledger's own settlement accounts, one per supported currency
+      responses:
+        '200':
+          description: Settlement accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Account'
+
+  /v1/transactions:
+    post:
+      tags: [transactions]
+      operationId: recordTransaction
+      summary: Record a transaction
+      description: |
+        Recorded all-or-nothing when every rule holds: at least two entries, every
+        amount positive and within its currency's decimal places, all accounts exist
+        and share one currency, debits equal credits, and no account goes past its
+        overdraft limit. Otherwise nothing is recorded and the problem's `errors[]`
+        says which rule failed and which entry was at fault.
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecordTransactionRequest'
+      responses:
+        '201':
+          description: Transaction recorded (or replayed from an earlier attempt with the same key)
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+  /v1/transactions/{transactionId}:
+    get:
+      tags: [transactions]
+      operationId: getTransaction
+      summary: Read a recorded transaction
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+      responses:
+        '200':
+          description: The transaction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /v1/transactions/{transactionId}/reversals:
+    post:
+      tags: [transactions]
+      operationId: reverseTransaction
+      summary: Reverse a transaction
+      description: |
+        Records a new transaction with every entry of the original flipped, linked to
+        the original. A transaction can be reversed once; a reversal cannot be
+        reversed. The reversal obeys the same rules as any transaction, overdraft
+        limits included.
+      parameters:
+        - $ref: '#/components/parameters/TransactionId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReverseTransactionRequest'
+      responses:
+        '201':
+          description: Reversal recorded (or replayed from an earlier attempt with the same key)
+          headers:
+            Location:
+              schema: { type: string, format: uri }
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transaction'
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/UnprocessableEntity' }
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Client-generated key, unique per intended operation; 1 to 255 characters
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 255
+    AccountId:
+      name: accountId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    TransactionId:
+      name: transactionId
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Malformed request (unreadable body, bad field types, missing Idempotency-Key)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    NotFound:
+      description: The resource in the path does not exist
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    Conflict:
+      description: Conflicts with current state (already reversed, idempotency key reused with a different body)
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+    UnprocessableEntity:
+      description: Well-formed but refused by a ledger rule; nothing was recorded
+      content:
+        application/problem+json:
+          schema: { $ref: '#/components/schemas/Problem' }
+
+  schemas:
+    Currency:
+      type: string
+      description: ISO 4217 code of a supported currency
+      enum: [EUR, USD, JPY]
+
+    Amount:
+      type: string
+      description: Non-negative decimal amount in major units, e.g. "125.50" or "15000"
+      pattern: '^[0-9]{1,15}(\.[0-9]{1,6})?$'
+      example: "125.50"
+
+    Direction:
+      type: string
+      enum: [DEBIT, CREDIT]
+
+    AccountKind:
+      type: string
+      enum: [REGULAR, SETTLEMENT]
+
+    OpenAccountRequest:
+      type: object
+      required: [currency]
+      properties:
+        currency:
+          type: string
+          description: ISO 4217 code; must be one of the supported currencies
+          minLength: 3
+          maxLength: 3
+          example: EUR
+        overdraftLimit:
+          allOf: [ { $ref: '#/components/schemas/Amount' } ]
+          description: How far below zero the balance may go. Zero when omitted.
+
+    Account:
+      type: object
+      required: [id, currency, kind, balance, openedAt]
+      properties:
+        id: { type: string, format: uuid }
+        currency: { $ref: '#/components/schemas/Currency' }
+        kind: { $ref: '#/components/schemas/AccountKind' }
+        overdraftLimit:
+          type: string
+          nullable: true
+          pattern: '^[0-9]{1,15}(\.[0-9]{1,6})?$'
+          description: How far below zero the balance may go. Absent for settlement accounts, which have no limit.
+        balance:
+          type: string
+          description: Signed decimal; a credit increases it, a debit decreases it
+          pattern: '^-?[0-9]{1,15}(\.[0-9]{1,6})?$'
+          example: "-125.50"
+        availableBalance:
+          type: string
+          nullable: true
+          description: balance + overdraftLimit, the most that can still be debited. Absent for settlement accounts.
+          pattern: '^-?[0-9]{1,15}(\.[0-9]{1,6})?$'
+        openedAt: { type: string, format: date-time }
+
+    EntryRequest:
+      type: object
+      required: [accountId, direction, amount]
+      properties:
+        accountId: { type: string, format: uuid }
+        direction: { $ref: '#/components/schemas/Direction' }
+        amount:
+          allOf: [ { $ref: '#/components/schemas/Amount' } ]
+          description: Positive, with no more decimal places than the account's currency allows
+
+    RecordTransactionRequest:
+      type: object
+      required: [description, entries]
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 255
+        entries:
+          type: array
+          minItems: 2
+          maxItems: 100
+          items: { $ref: '#/components/schemas/EntryRequest' }
+
+    ReverseTransactionRequest:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Defaults to "Reversal of <original id>"
+
+    Entry:
+      type: object
+      required: [accountId, direction, amount, balanceAfter]
+      properties:
+        accountId: { type: string, format: uuid }
+        direction: { $ref: '#/components/schemas/Direction' }
+        amount: { $ref: '#/components/schemas/Amount' }
+        balanceAfter:
+          type: string
+          description: The account's balance right after this entry was posted
+          pattern: '^-?[0-9]{1,15}(\.[0-9]{1,6})?$'
+
+    Transaction:
+      type: object
+      required: [id, description, currency, recordedAt, entries]
+      properties:
+        id: { type: string, format: uuid }
+        description: { type: string }
+        currency: { $ref: '#/components/schemas/Currency' }
+        recordedAt: { type: string, format: date-time }
+        entries:
+          type: array
+          items: { $ref: '#/components/schemas/Entry' }
+        reverses:
+          type: string
+          format: uuid
+          nullable: true
+          description: For a reversal, the transaction it reverses
+        reversedBy:
+          type: string
+          format: uuid
+          nullable: true
+          description: Set once this transaction has been reversed
+
+    AccountEntry:
+      type: object
+      required: [entryId, transactionId, description, direction, amount, balanceAfter, recordedAt]
+      properties:
+        entryId: { type: string }
+        transactionId: { type: string, format: uuid }
+        description: { type: string }
+        direction: { $ref: '#/components/schemas/Direction' }
+        amount: { $ref: '#/components/schemas/Amount' }
+        balanceAfter:
+          type: string
+          pattern: '^-?[0-9]{1,15}(\.[0-9]{1,6})?$'
+        recordedAt: { type: string, format: date-time }
+
+    AccountEntriesPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/AccountEntry' }
+        nextCursor:
+          type: string
+          nullable: true
+          description: Pass as `cursor` to get the next (older) page; absent on the last page
+
+    BalanceAt:
+      type: object
+      required: [accountId, at, balance]
+      properties:
+        accountId: { type: string, format: uuid }
+        at: { type: string, format: date-time }
+        balance:
+          type: string
+          pattern: '^-?[0-9]{1,15}(\.[0-9]{1,6})?$'
+
+    ErrorCode:
+      type: string
+      enum:
+        - MALFORMED_REQUEST
+        - IDEMPOTENCY_KEY_MISSING
+        - IDEMPOTENCY_KEY_REUSED
+        - NOT_FOUND
+        - INVALID_CURRENCY_CODE
+        - UNSUPPORTED_CURRENCY
+        - INVALID_AMOUNT
+        - NON_POSITIVE_AMOUNT
+        - SCALE_EXCEEDED
+        - TOO_FEW_ENTRIES
+        - UNKNOWN_ACCOUNT
+        - CURRENCY_MISMATCH
+        - UNBALANCED
+        - OVERDRAFT_EXCEEDED
+        - ALREADY_REVERSED
+        - CANNOT_REVERSE_REVERSAL
+
+    ErrorDetail:
+      type: object
+      required: [code, detail]
+      properties:
+        code: { $ref: '#/components/schemas/ErrorCode' }
+        detail:
+          type: string
+          description: Human-readable explanation with the offending values
+        pointer:
+          type: string
+          description: JSON Pointer (RFC 6901) to the part of the request at fault, e.g. "/entries/1/amount"
+
+    Problem:
+      type: object
+      required: [type, title, status, errors]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+        instance: { type: string, format: uri }
+        errors:
+          type: array
+          items: { $ref: '#/components/schemas/ErrorDetail' }
