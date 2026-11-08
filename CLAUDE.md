@@ -6,7 +6,8 @@ gave it"). It is the standing brief for any AI session working on this repositor
 ## What this is
 A double-entry ledger service for a payments platform: Java 17, Spring Boot 4, MySQL,
 Kafka, REST. The requirements are in the challenge PDF; the design is in
-`docs/PLAN.md`. Read the plan before changing anything structural.
+`docs/PLAN.md` and the result is described in `README.md`. All ten phases of the plan
+are implemented. Read the plan and the README before changing anything structural.
 
 ## Non-negotiable invariants
 - Money is exact: `long` minor units + currency scale. Never `double`/`float`, never
@@ -30,13 +31,18 @@ Kafka, REST. The requirements are in the challenge PDF; the design is in
 - Errors are RFC 9457 problem details with `errors[].code` and `errors[].pointer`.
 - Unit tests are `*Test.java` (surefire, no Docker). Integration tests are `*IT.java`
   (failsafe, Testcontainers with the same image versions as docker-compose).
-- Every guarantee from the challenge's section 6 has a test against real MySQL/Kafka.
+- Every guarantee from the challenge's section 6 has a test against real MySQL/Kafka;
+  the README's test table says which. Keep it in step when adding tests.
+- Tests that need tracing propagation run with `@AutoConfigureTracing` (the test base
+  has it): Boot 4 switches propagation off together with trace export in tests.
 - Unspecified behaviour: make a reasonable call and record it in README "Assumptions".
 
 ## Commands
-- Build + all tests: `./run.sh` (or `./mvnw -B verify`)
+- Everything, including the two-instance stack and the checks against it: `./run.sh`
+- Unit + integration tests (Testcontainers): `./mvnw -B verify`
 - Unit tests only: `./mvnw -B test`
 - Start stack only: `./run.sh --skip-tests`; stop: `./run.sh --down`
+- Sample payment message: `scripts/send-payment.sh <merchantAccountId> 125.50 EUR`
 - JDK on this machine: `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`
 
 ## Working agreements
