@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: ledger
+  datasource:
+    url: ${LEDGER_DB_URL:jdbc:mysql://localhost:3306/ledger}
+    username: ${LEDGER_DB_USER:ledger}
+    password: ${LEDGER_DB_PASSWORD:ledger}
+    hikari:
+      maximum-pool-size: ${LEDGER_DB_POOL_SIZE:20}
+      # READ COMMITTED on purpose: the posting path takes explicit row locks
+      # (SELECT ... FOR UPDATE) and we do not want InnoDB gap locks on inserts.
+      transaction-isolation: TRANSACTION_READ_COMMITTED
+  flyway:
+    locations: classpath:db/migration
+    fail-on-missing-locations: true
+  kafka:
+    bootstrap-servers: ${LEDGER_KAFKA_BOOTSTRAP:localhost:29092}
+    consumer:
+      group-id: ledger
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+    producer:
+      acks: all
+      properties:
+        enable.idempotence: true
+    listener:
+      ack-mode: manual_immediate
+
+server:
+  port: 8080
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+
+ledger:
+  instance-id: ${LEDGER_INSTANCE_ID:local}
+  topics:
+    payment-settled: payments.settled
+    payment-settled-dlt: payments.settled.dlt
+    transaction-recorded: ledger.transaction-recorded.v1
