@@ -146,7 +146,13 @@ database and broker.
 ## Tests
 
 `./mvnw -B test`: 68 unit tests, no Docker. `./mvnw -B verify`: plus 41 integration
-tests on Testcontainers. `./run.sh`: plus 5 checks through the gateway across two JVMs.
+tests and 27 Cucumber scenarios on Testcontainers. `./run.sh`: plus 5 checks through the
+gateway across two JVMs.
+
+The scenarios in [`src/test/resources/features`](src/test/resources/features) are the
+challenge's worked examples and refusal table written as Gherkin (accounts, transactions,
+reversals, idempotency, settled payments), run end to end over HTTP and Kafka; the HTML
+report lands in `target/cucumber/report.html`.
 
 - The challenge's examples and every refusal, with codes and pointers (`PostingTest`, `LedgerApiIT`).
 - A refused transaction leaves no row and no balance change (`AtomicityIT`).
