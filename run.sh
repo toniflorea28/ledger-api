@@ -4,7 +4,7 @@
 #
 # Needs only Docker, Git and a JDK 17+ on the host. Maven is fetched by the wrapper.
 #
-#   ./run.sh              build, test, start stack, smoke-check
+#   ./run.sh              build, unit + integration tests, start stack, end-to-end checks
 #   ./run.sh --skip-tests build and start only
 #   ./run.sh --down       stop the stack and remove volumes
 set -euo pipefail
@@ -73,6 +73,12 @@ for i in $(seq 1 30); do
   sleep 2
 done
 curl -fsS http://localhost:8080/actuator/health | sed 's/^/  /'; echo
+
+if [[ "$SKIP_TESTS" == false ]]; then
+  log "End-to-end checks against the running stack (two instances behind the gateway, real broker)"
+  ./mvnw -B -q -Dtest=NONE -Dsurefire.failIfNoSpecifiedTests=false -Dit.test=StackE2EIT \
+    -De2e.baseUrl=http://localhost:8080 -De2e.kafka=localhost:29092 verify
+fi
 
 log "Ready. API at http://localhost:8080 (round-robin over ledger-1 and ledger-2)."
 echo "  Logs:  ${COMPOSE[*]} logs -f ledger-1 ledger-2"

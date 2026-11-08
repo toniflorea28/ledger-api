@@ -50,5 +50,5 @@ binary is used.
 | 6. Settlement consumer: paymentId inbox, dead-letter topic with reasons, sample-message script | done |
 | 7. Outbox relay: leased publisher, per-currency order, at-least-once, schema-checked payload | done |
 | 8. Nice-to-haves: paged entries with balance-after, balance as at an instant, end-to-end tracing | done |
-| 9. Packaging and e2e | pending |
+| 9. Packaging and e2e: image, two instances behind a gateway, stack-level checks from run.sh | done |
 | 10. Documentation | pending |

@@ -1,5 +1,19 @@
 name: ledger
 
+x-ledger: &ledger
+  image: ledger:local
+  environment: &ledger-env
+    SPRING_PROFILES_ACTIVE: docker
+    LEDGER_DB_URL: jdbc:mysql://mysql:3306/ledger?connectionTimeZone=UTC
+    LEDGER_DB_USER: ledger
+    LEDGER_DB_PASSWORD: ledger
+    LEDGER_KAFKA_BOOTSTRAP: kafka:9092
+  depends_on:
+    mysql:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+
 services:
   mysql:
     image: mysql:8.4
@@ -51,26 +65,20 @@ services:
       timeout: 10s
       retries: 20
 
-  ledger-1: &ledger
+  ledger-1:
+    <<: *ledger
     build: .
-    image: ledger:local
-    environment: &ledger-env
-      SPRING_PROFILES_ACTIVE: docker
+    environment:
+      <<: *ledger-env
       LEDGER_INSTANCE_ID: ledger-1
-      LEDGER_DB_URL: jdbc:mysql://mysql:3306/ledger?connectionTimeZone=UTC
-      LEDGER_DB_USER: ledger
-      LEDGER_DB_PASSWORD: ledger
-      LEDGER_KAFKA_BOOTSTRAP: kafka:9092
-    depends_on:
-      mysql:
-        condition: service_healthy
-      kafka:
-        condition: service_healthy
     ports:
       - "127.0.0.1:8081:8080"
 
   ledger-2:
     <<: *ledger
+    depends_on:
+      ledger-1:
+        condition: service_started
     environment:
       <<: *ledger-env
       LEDGER_INSTANCE_ID: ledger-2
