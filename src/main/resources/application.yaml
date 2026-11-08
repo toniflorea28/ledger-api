@@ -19,12 +19,19 @@ spring:
       group-id: ledger
       auto-offset-reset: earliest
       enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
     producer:
       acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
       properties:
         enable.idempotence: true
     listener:
-      ack-mode: manual_immediate
+      ack-mode: record
+      observation-enabled: true
+    template:
+      observation-enabled: true
 
   jackson:
     default-property-inclusion: non_null
@@ -52,6 +59,8 @@ ledger:
   idempotency:
     ttl: PT24H
     sweep-interval: PT10M
+  consumer:
+    concurrency: 3
   topics:
     payment-settled: payments.settled
     payment-settled-dlt: payments.settled.dlt

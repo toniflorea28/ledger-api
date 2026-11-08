@@ -6,9 +6,11 @@ import com.toniflorea.ledger.application.port.AccountRepository;
 import com.toniflorea.ledger.application.port.IdGenerator;
 import com.toniflorea.ledger.application.port.LedgerClock;
 import com.toniflorea.ledger.application.port.OutboxRepository;
+import com.toniflorea.ledger.application.port.ProcessedPaymentStore;
 import com.toniflorea.ledger.application.port.TransactionRepository;
 import com.toniflorea.ledger.application.service.AccountService;
 import com.toniflorea.ledger.application.service.PostingService;
+import com.toniflorea.ledger.application.service.SettlementService;
 import com.toniflorea.ledger.application.service.TransactionService;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -51,5 +53,11 @@ public class ApplicationConfig {
 	@Bean
 	TransactionService transactionService(TransactionRepository transactions, PostingService posting) {
 		return new TransactionService(transactions, posting);
+	}
+
+	@Bean
+	SettlementService settlementService(AccountRepository accounts, ProcessedPaymentStore processedPayments,
+			PostingService posting, LedgerClock clock, TransactionOperations tx) {
+		return new SettlementService(accounts, processedPayments, posting, clock, tx);
 	}
 }

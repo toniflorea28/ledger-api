@@ -51,21 +51,6 @@ services:
       timeout: 10s
       retries: 20
 
-  kafka-init:
-    image: apache/kafka:4.3.2
-    depends_on:
-      kafka:
-        condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        set -e
-        for topic in payments.settled payments.settled.dlt ledger.transaction-recorded.v1; do
-          /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --create --if-not-exists \
-            --topic "$$topic" --partitions 3 --replication-factor 1
-        done
-        /opt/kafka/bin/kafka-topics.sh --bootstrap-server kafka:9092 --list
-
   ledger-1: &ledger
     build: .
     image: ledger:local
@@ -79,8 +64,8 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
-      kafka-init:
-        condition: service_completed_successfully
+      kafka:
+        condition: service_healthy
     ports:
       - "127.0.0.1:8081:8080"
 
