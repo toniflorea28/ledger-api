@@ -6,18 +6,17 @@ import static org.awaitility.Awaitility.await;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.TransactionDto;
 import com.toniflorea.ledger.infrastructure.KafkaConfig;
 import com.toniflorea.ledger.support.IntegrationTest;
+import com.toniflorea.ledger.support.KafkaReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
+import java.util.HashMap;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.header.Header;
-import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -149,24 +148,12 @@ class SettlementIT extends IntegrationTest {
 	}
 
 	private Map<String, ConsumerRecord<String, String>> readDeadLetters(Set<String> keys) {
-		Map<String, ConsumerRecord<String, String>> found = new ConcurrentHashMap<>();
-		Map<String, Object> props = Map.of(
-				ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, kafkaContainer.getBootstrapServers(),
-				ConsumerConfig.GROUP_ID_CONFIG, "dlt-reader-" + UUID.randomUUID(),
-				ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest",
-				ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-		try (KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props, new StringDeserializer(),
-				new StringDeserializer())) {
-			consumer.subscribe(List.of(DLT));
-			await().atMost(Duration.ofSeconds(30)).untilAsserted(() -> {
-				for (ConsumerRecord<String, String> record : consumer.poll(Duration.ofMillis(500))) {
-					if (keys.contains(record.key())) {
-						found.put(record.key(), record);
-					}
-				}
-				assertThat(found.keySet()).containsAll(keys);
-			});
-		}
-		return found;
+		List<ConsumerRecord<String, String>> records = new KafkaReader(kafkaContainer.getBootstrapServers())
+				.readFromBeginning(DLT, record -> keys.contains(record.key()),
+						found -> found.stream().map(ConsumerRecord::key).collect(Collectors.toSet()).containsAll(keys),
+						Duration.ofSeconds(30));
+		Map<String, ConsumerRecord<String, String>> byKey = new HashMap<>();
+		records.forEach(record -> byKey.put(record.key(), record));
+		return byKey;
 	}
 }

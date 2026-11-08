@@ -12,6 +12,7 @@ import com.toniflorea.ledger.application.service.AccountService;
 import com.toniflorea.ledger.application.service.PostingService;
 import com.toniflorea.ledger.application.service.SettlementService;
 import com.toniflorea.ledger.application.service.TransactionService;
+import com.toniflorea.ledger.adapter.outbound.messaging.OutboxRelay;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,6 +54,12 @@ public class ApplicationConfig {
 	@Bean
 	TransactionService transactionService(TransactionRepository transactions, PostingService posting) {
 		return new TransactionService(transactions, posting);
+	}
+
+	@Bean
+	OutboxRelay.RelaySettings relaySettings(LedgerProperties properties) {
+		return new OutboxRelay.RelaySettings(properties.instanceId(), properties.topics().transactionRecorded(),
+				properties.outbox().leaseTtl(), properties.outbox().batchSize(), properties.outbox().sendTimeout());
 	}
 
 	@Bean

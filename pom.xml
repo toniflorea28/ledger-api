@@ -19,6 +19,7 @@
 		<java.version>17</java.version>
 		<archunit.version>1.5.1</archunit.version>
 		<openapi-generator.version>7.27.0</openapi-generator.version>
+		<json-schema-validator.version>3.0.9</json-schema-validator.version>
 	</properties>
 
 	<dependencies>
@@ -140,6 +141,12 @@
 			<groupId>com.tngtech.archunit</groupId>
 			<artifactId>archunit-junit5</artifactId>
 			<version>${archunit.version}</version>
+			<scope>test</scope>
+		</dependency>
+		<dependency>
+			<groupId>com.networknt</groupId>
+			<artifactId>json-schema-validator</artifactId>
+			<version>${json-schema-validator.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>

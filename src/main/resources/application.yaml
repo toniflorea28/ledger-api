@@ -50,6 +50,9 @@ management:
       probes:
         enabled: true
       show-details: always
+      group:
+        readiness:
+          include: readinessState,db,kafka
   tracing:
     sampling:
       probability: 1.0
@@ -61,6 +64,12 @@ ledger:
     sweep-interval: PT10M
   consumer:
     concurrency: 3
+  outbox:
+    enabled: true
+    poll-interval: PT0.5S
+    lease-ttl: PT15S
+    batch-size: 200
+    send-timeout: PT10S
   topics:
     payment-settled: payments.settled
     payment-settled-dlt: payments.settled.dlt

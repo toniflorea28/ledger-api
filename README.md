@@ -48,7 +48,7 @@ binary is used.
 | 4. Persistence and posting: schema, ordered row locks, REST, problem details, atomicity/concurrency tests | done |
 | 5. Idempotency: key stored in the same transaction, refusals remembered, concurrent retries | done |
 | 6. Settlement consumer: paymentId inbox, dead-letter topic with reasons, sample-message script | done |
-| 7. Outbox relay | pending |
+| 7. Outbox relay: leased publisher, per-currency order, at-least-once, schema-checked payload | done |
 | 8. Nice-to-haves | pending |
 | 9. Packaging and e2e | pending |
 | 10. Documentation | pending |
