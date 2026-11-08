@@ -3,6 +3,8 @@ package com.toniflorea.ledger.infrastructure;
 import com.toniflorea.ledger.application.idempotency.IdempotencyStore;
 import com.toniflorea.ledger.application.idempotency.IdempotentExecutor;
 import com.toniflorea.ledger.application.port.AccountRepository;
+import com.toniflorea.ledger.application.port.EntryQueryRepository;
+import com.toniflorea.ledger.application.port.TraceContext;
 import com.toniflorea.ledger.application.port.IdGenerator;
 import com.toniflorea.ledger.application.port.LedgerClock;
 import com.toniflorea.ledger.application.port.OutboxRepository;
@@ -42,13 +44,14 @@ public class ApplicationConfig {
 
 	@Bean
 	PostingService postingService(AccountRepository accounts, TransactionRepository transactions,
-			OutboxRepository outbox, IdGenerator ids, LedgerClock clock) {
-		return new PostingService(accounts, transactions, outbox, ids, clock);
+			OutboxRepository outbox, IdGenerator ids, LedgerClock clock, TraceContext trace) {
+		return new PostingService(accounts, transactions, outbox, ids, clock, trace);
 	}
 
 	@Bean
-	AccountService accountService(AccountRepository accounts, IdGenerator ids, LedgerClock clock) {
-		return new AccountService(accounts, ids, clock);
+	AccountService accountService(AccountRepository accounts, EntryQueryRepository entries, IdGenerator ids,
+			LedgerClock clock) {
+		return new AccountService(accounts, entries, ids, clock);
 	}
 
 	@Bean

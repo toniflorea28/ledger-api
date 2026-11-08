@@ -5,6 +5,7 @@ import com.toniflorea.ledger.application.port.AccountRepository;
 import com.toniflorea.ledger.application.port.IdGenerator;
 import com.toniflorea.ledger.application.port.LedgerClock;
 import com.toniflorea.ledger.application.port.OutboxRepository;
+import com.toniflorea.ledger.application.port.TraceContext;
 import com.toniflorea.ledger.application.port.TransactionRepository;
 import com.toniflorea.ledger.domain.account.Account;
 import com.toniflorea.ledger.domain.account.AccountId;
@@ -17,24 +18,30 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 public class PostingService {
+
+	private static final Logger log = LoggerFactory.getLogger(PostingService.class);
 
 	private final AccountRepository accounts;
 	private final TransactionRepository transactions;
 	private final OutboxRepository outbox;
 	private final IdGenerator ids;
 	private final LedgerClock clock;
+	private final TraceContext trace;
 
 	public PostingService(AccountRepository accounts, TransactionRepository transactions, OutboxRepository outbox,
-			IdGenerator ids, LedgerClock clock) {
+			IdGenerator ids, LedgerClock clock, TraceContext trace) {
 		this.accounts = accounts;
 		this.transactions = transactions;
 		this.outbox = outbox;
 		this.ids = ids;
 		this.clock = clock;
+		this.trace = trace;
 	}
 
 	/**
@@ -58,7 +65,10 @@ public class PostingService {
 		for (Account account : result.accounts()) {
 			accounts.updateBalance(account);
 		}
-		outbox.append(new TransactionRecordedEvent(ids.next(), now, result.transaction()));
+		outbox.append(new TransactionRecordedEvent(ids.next(), now, result.transaction(), trace.currentHeaders()));
+		log.info("recorded transaction {} in {} with {} entries{}", result.transaction().id(), result.transaction().currency(),
+				result.transaction().entries().size(),
+				draft.isReversal() ? " reversing " + draft.reverses() : "");
 		return result.transaction();
 	}
 }

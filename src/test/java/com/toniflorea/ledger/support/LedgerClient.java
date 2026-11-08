@@ -1,13 +1,18 @@
 package com.toniflorea.ledger.support;
 
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.AccountDto;
+import com.toniflorea.ledger.adapter.inbound.rest.api.model.AccountEntriesPageDto;
+import com.toniflorea.ledger.adapter.inbound.rest.api.model.BalanceAtDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.DirectionDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.EntryRequestDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.OpenAccountRequestDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.RecordTransactionRequestDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.ReverseTransactionRequestDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.TransactionDto;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,7 +23,8 @@ import tools.jackson.databind.json.JsonMapper;
 
 public final class LedgerClient {
 
-	public record Response<T>(int status, T body, Map<String, Object> problem, String location, String contentType) {
+	public record Response<T>(int status, T body, Map<String, Object> problem, String location, String contentType,
+			Map<String, String> headers) {
 
 		public boolean isSuccess() {
 			return status >= 200 && status < 300;
@@ -81,6 +87,28 @@ public final class LedgerClient {
 				TransactionDto.class);
 	}
 
+	public Response<AccountEntriesPageDto> entries(UUID accountId, String cursor, Integer limit) {
+		StringBuilder path = new StringBuilder("/v1/accounts/" + accountId + "/entries?");
+		if (cursor != null) {
+			path.append("cursor=").append(cursor).append('&');
+		}
+		if (limit != null) {
+			path.append("limit=").append(limit);
+		}
+		return exchange(HttpMethod.GET, path.toString(), Map.of(), null, AccountEntriesPageDto.class);
+	}
+
+	public Response<BalanceAtDto> balanceAt(UUID accountId, Instant at) {
+		return exchange(HttpMethod.GET, "/v1/accounts/" + accountId + "/balance?at=" + DateTimeFormatter.ISO_INSTANT.format(at),
+				Map.of(), null, BalanceAtDto.class);
+	}
+
+	public Response<TransactionDto> record(String description, Map<String, String> headers, EntryRequestDto... entries) {
+		return exchange(HttpMethod.POST, "/v1/transactions", headers,
+				new RecordTransactionRequestDto().description(description).entries(Arrays.asList(entries)),
+				TransactionDto.class);
+	}
+
 	public Response<TransactionDto> getTransaction(UUID id) {
 		return exchange(HttpMethod.GET, "/v1/transactions/" + id, Map.of(), null, TransactionDto.class);
 	}
@@ -108,14 +136,16 @@ public final class LedgerClient {
 			String location = response.getHeaders().getFirst("Location");
 			MediaType mediaType = response.getHeaders().getContentType();
 			String contentType = mediaType == null ? null : mediaType.toString();
+			Map<String, String> responseHeaders = new HashMap<>();
+			response.getHeaders().forEach((name, values) -> responseHeaders.put(name.toLowerCase(), values.get(0)));
 			if (status < 300) {
 				T parsed = bytes.length == 0 ? null
 						: type == String.class ? type.cast(new String(bytes)) : json.readValue(bytes, type);
-				return new Response<>(status, parsed, Map.of(), location, contentType);
+				return new Response<>(status, parsed, Map.of(), location, contentType, responseHeaders);
 			}
 			@SuppressWarnings("unchecked")
 			Map<String, Object> problem = bytes.length == 0 ? Map.of() : json.readValue(bytes, Map.class);
-			return new Response<>(status, null, problem, location, contentType);
+			return new Response<>(status, null, problem, location, contentType, responseHeaders);
 		});
 	}
 }

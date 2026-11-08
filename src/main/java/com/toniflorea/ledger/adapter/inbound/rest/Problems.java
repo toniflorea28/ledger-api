@@ -64,7 +64,6 @@ final class Problems {
 			case NOT_FOUND -> "not-found";
 			case CONFLICT -> "conflict";
 			case UNPROCESSABLE_ENTITY -> "refused";
-			case NOT_IMPLEMENTED -> "not-implemented";
 			case INTERNAL_SERVER_ERROR -> "internal";
 			default -> status.name().toLowerCase().replace('_', '-');
 		};
@@ -76,7 +75,6 @@ final class Problems {
 			case NOT_FOUND -> "Not found";
 			case CONFLICT -> "Conflicts with the current state";
 			case UNPROCESSABLE_ENTITY -> "Refused by a ledger rule";
-			case NOT_IMPLEMENTED -> "Not implemented";
 			case INTERNAL_SERVER_ERROR -> "Internal error";
 			default -> status.getReasonPhrase();
 		};

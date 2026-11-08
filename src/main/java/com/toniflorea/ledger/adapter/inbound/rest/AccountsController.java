@@ -9,8 +9,10 @@ import com.toniflorea.ledger.application.usecase.AccountQueries;
 import com.toniflorea.ledger.application.usecase.OpenAccount;
 import com.toniflorea.ledger.domain.account.Account;
 import com.toniflorea.ledger.domain.account.AccountId;
+import com.toniflorea.ledger.domain.money.Money;
 import java.net.URI;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,11 +55,15 @@ public class AccountsController implements AccountsApi {
 
 	@Override
 	public ResponseEntity<AccountEntriesPageDto> listAccountEntries(UUID accountId, String cursor, Integer limit) {
-		throw new NotImplemented("listing account entries");
+		AccountQueries.EntriesPage page = queries.entries(AccountId.of(accountId), Optional.ofNullable(cursor),
+				limit == null ? 50 : limit);
+		return ResponseEntity.ok(RestMapper.toDto(page));
 	}
 
 	@Override
 	public ResponseEntity<BalanceAtDto> getAccountBalanceAt(UUID accountId, OffsetDateTime at) {
-		throw new NotImplemented("balance as at an instant");
+		Money balance = queries.balanceAt(AccountId.of(accountId), at.toInstant());
+		return ResponseEntity.ok(new BalanceAtDto().accountId(accountId).at(at.withOffsetSameInstant(ZoneOffset.UTC))
+				.balance(balance.toDecimalString()));
 	}
 }

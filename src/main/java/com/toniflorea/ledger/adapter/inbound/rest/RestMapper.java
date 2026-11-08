@@ -1,11 +1,15 @@
 package com.toniflorea.ledger.adapter.inbound.rest;
 
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.AccountDto;
+import com.toniflorea.ledger.adapter.inbound.rest.api.model.AccountEntriesPageDto;
+import com.toniflorea.ledger.adapter.inbound.rest.api.model.AccountEntryDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.AccountKindDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.CurrencyDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.DirectionDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.EntryDto;
 import com.toniflorea.ledger.adapter.inbound.rest.api.model.TransactionDto;
+import com.toniflorea.ledger.application.port.EntryQueryRepository.AccountEntry;
+import com.toniflorea.ledger.application.usecase.AccountQueries;
 import com.toniflorea.ledger.application.usecase.TransactionQueries;
 import com.toniflorea.ledger.domain.account.Account;
 import com.toniflorea.ledger.domain.money.Money;
@@ -50,6 +54,23 @@ final class RestMapper {
 				.entries(transaction.entries().stream().map(RestMapper::toDto).toList())
 				.reverses(transaction.reverses() == null ? null : transaction.reverses().value())
 				.reversedBy(reversedBy.map(TransactionId::value).orElse(null));
+	}
+
+	static AccountEntriesPageDto toDto(AccountQueries.EntriesPage page) {
+		return new AccountEntriesPageDto()
+				.items(page.items().stream().map(RestMapper::toDto).toList())
+				.nextCursor(page.nextCursor().orElse(null));
+	}
+
+	private static AccountEntryDto toDto(AccountEntry entry) {
+		return new AccountEntryDto()
+				.entryId(Long.toString(entry.id()))
+				.transactionId(entry.transactionId().value())
+				.description(entry.description())
+				.direction(DirectionDto.fromValue(entry.direction().name()))
+				.amount(entry.amount().toDecimalString())
+				.balanceAfter(entry.balanceAfter().toDecimalString())
+				.recordedAt(utc(entry.recordedAt()));
 	}
 
 	private static EntryDto toDto(Entry entry) {

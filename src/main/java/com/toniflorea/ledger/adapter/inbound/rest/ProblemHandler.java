@@ -3,6 +3,8 @@ package com.toniflorea.ledger.adapter.inbound.rest;
 import com.toniflorea.ledger.domain.error.ErrorCode;
 import com.toniflorea.ledger.domain.error.LedgerError;
 import com.toniflorea.ledger.domain.error.LedgerException;
+import jakarta.validation.ConstraintViolationException;
+import jakarta.validation.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,16 +39,22 @@ public class ProblemHandler extends ResponseEntityExceptionHandler {
 		return ResponseEntity.status(status).body(Problems.problem(status, ex.errors()));
 	}
 
+	@ExceptionHandler(ConstraintViolationException.class)
+	ResponseEntity<ProblemDetail> constraintViolation(ConstraintViolationException ex) {
+		List<LedgerError> errors = ex.getConstraintViolations().stream().map(violation -> {
+			String parameter = lastNode(violation.getPropertyPath());
+			boolean idempotencyKey = "idempotencyKey".equals(parameter);
+			return LedgerError.of(idempotencyKey ? ErrorCode.IDEMPOTENCY_KEY_MISSING : ErrorCode.MALFORMED_REQUEST,
+					idempotencyKey ? null : parameter, parameter + " " + violation.getMessage()
+							+ (violation.getInvalidValue() == null ? "" : ", got '" + violation.getInvalidValue() + "'"));
+		}).toList();
+		HttpStatus status = HttpStatus.BAD_REQUEST;
+		return ResponseEntity.status(status).body(Problems.problem(status, errors));
+	}
+
 	@ExceptionHandler(StoredProblem.class)
 	ResponseEntity<String> storedProblem(StoredProblem ex) {
 		return ResponseEntity.status(ex.status()).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(ex.body());
-	}
-
-	@ExceptionHandler(NotImplemented.class)
-	ResponseEntity<ProblemDetail> notImplemented(NotImplemented ex) {
-		HttpStatus status = HttpStatus.NOT_IMPLEMENTED;
-		return ResponseEntity.status(status)
-				.body(Problems.problem(status, List.of(LedgerError.of(ErrorCode.MALFORMED_REQUEST, ex.getMessage()))));
 	}
 
 	@ExceptionHandler(Exception.class)
@@ -94,6 +102,14 @@ public class ProblemHandler extends ResponseEntityExceptionHandler {
 		}
 		ErrorCode code = status == HttpStatus.NOT_FOUND ? ErrorCode.NOT_FOUND : ErrorCode.MALFORMED_REQUEST;
 		return List.of(LedgerError.of(code, rootMessage(ex)));
+	}
+
+	private static String lastNode(Path path) {
+		String name = null;
+		for (Path.Node node : path) {
+			name = node.getName();
+		}
+		return name == null ? "request" : name;
 	}
 
 	private static String pointer(String field) {

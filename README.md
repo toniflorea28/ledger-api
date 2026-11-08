@@ -49,6 +49,6 @@ binary is used.
 | 5. Idempotency: key stored in the same transaction, refusals remembered, concurrent retries | done |
 | 6. Settlement consumer: paymentId inbox, dead-letter topic with reasons, sample-message script | done |
 | 7. Outbox relay: leased publisher, per-currency order, at-least-once, schema-checked payload | done |
-| 8. Nice-to-haves | pending |
+| 8. Nice-to-haves: paged entries with balance-after, balance as at an instant, end-to-end tracing | done |
 | 9. Packaging and e2e | pending |
 | 10. Documentation | pending |

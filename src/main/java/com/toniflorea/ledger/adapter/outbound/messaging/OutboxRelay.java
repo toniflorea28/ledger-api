@@ -6,10 +6,14 @@ import com.toniflorea.ledger.application.port.OutboxRepository.Entry;
 import com.toniflorea.ledger.application.port.RelayLease;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
+import io.micrometer.tracing.propagation.Propagator;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.producer.ProducerRecord;
@@ -47,17 +51,22 @@ public class OutboxRelay {
 	private final TransactionOperations tx;
 	private final LedgerClock clock;
 	private final RelaySettings settings;
+	private final Tracer tracer;
+	private final Propagator propagator;
 	private final Counter published;
 	private final String owner;
 
 	public OutboxRelay(OutboxRepository outbox, RelayLease lease, KafkaTemplate<String, String> kafka,
-			TransactionOperations tx, LedgerClock clock, RelaySettings settings, MeterRegistry meters) {
+			TransactionOperations tx, LedgerClock clock, RelaySettings settings, Tracer tracer, Propagator propagator,
+			MeterRegistry meters) {
 		this.outbox = outbox;
 		this.lease = lease;
 		this.kafka = kafka;
 		this.tx = tx;
 		this.clock = clock;
 		this.settings = settings;
+		this.tracer = tracer;
+		this.propagator = propagator;
 		this.published = meters.counter("ledger.outbox.published");
 		this.owner = settings.instanceId() + "/" + UUID.randomUUID().toString().substring(0, 8);
 		meters.gauge("ledger.outbox.unpublished", this, relay -> relay.tx.execute(s -> outbox.countUnpublished()));
@@ -84,7 +93,8 @@ public class OutboxRelay {
 	private List<Long> publish(List<Entry> batch) {
 		List<Long> sent = new ArrayList<>(batch.size());
 		for (Entry entry : batch) {
-			try {
+			Span span = publishSpan(entry);
+			try (Tracer.SpanInScope scope = tracer.withSpan(span)) {
 				kafka.send(record(entry)).get(settings.sendTimeout().toMillis(), TimeUnit.MILLISECONDS);
 				sent.add(entry.id());
 			}
@@ -93,12 +103,27 @@ public class OutboxRelay {
 				return sent;
 			}
 			catch (Exception e) {
+				span.error(e);
 				log.warn("could not publish outbox event {} (transaction {}); will retry", entry.eventId(),
 						entry.aggregateId(), e);
 				return sent;
 			}
+			finally {
+				span.end();
+			}
 		}
 		return sent;
+	}
+
+	/**
+	 * The publish span is a child of the trace that recorded the transaction (its
+	 * context was stored with the outbox row), so the announcement carries the same
+	 * trace id as the HTTP request or the payment message that caused it.
+	 */
+	private Span publishSpan(Entry entry) {
+		Span.Builder builder = entry.headers().isEmpty() ? tracer.spanBuilder()
+				: propagator.extract(entry.headers(), Map::get);
+		return builder.name("outbox publish").tag("transaction.id", entry.aggregateId().toString()).start();
 	}
 
 	private ProducerRecord<String, String> record(Entry entry) {
@@ -107,7 +132,6 @@ public class OutboxRelay {
 		record.headers().add(EVENT_ID_HEADER, bytes(entry.eventId().toString()));
 		record.headers().add(EVENT_TYPE_HEADER, bytes(entry.eventType()));
 		record.headers().add(AGGREGATE_ID_HEADER, bytes(entry.aggregateId().toString()));
-		entry.headers().forEach((name, value) -> record.headers().add(name, bytes(value)));
 		return record;
 	}
 
