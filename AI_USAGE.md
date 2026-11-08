@@ -1,7 +1,7 @@
 # AI usage
 
-I used Claude Code (Anthropic's coding assistant) on this project the way I would use
-a fast, well-read junior engineer: I decided what to build and how, it produced the
+I used Claude Code on this project the way I would use it in my day to day work:
+ I decided what to build and how, it produced the
 code I asked for, and nothing it produced was accepted until it had been run against
 the real database and broker.
 
@@ -24,9 +24,6 @@ the real database and broker.
 - The gate between phases. Work was split into ten phases, each ending with the full
   test run against real MySQL and Kafka; I reviewed the result of each and gave the go
   for the next. Nothing was committed red.
-- The working rules. No AI attribution in the commit history (AI use is disclosed
-  here, where the challenge asks for it) and no comments that merely restate code; the
-  rules are in [CLAUDE.md](CLAUDE.md), the committed brief the assistant worked from.
 
 **Delegated: the typing.**
 
@@ -66,5 +63,4 @@ The rule was: run it, do not read it and nod.
 ## In short
 
 The architecture, the trade-offs and the acceptance bar are mine; the assistant made
-the implementation fast and the test coverage broad. Any decision in this repository
-is one I can explain and would make again.
+the implementation fast and the test coverage broad.

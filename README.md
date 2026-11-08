@@ -407,5 +407,4 @@ Skipped, and why:
 
 [docs/PLAN.md](docs/PLAN.md) is the design written before any code, and the commits
 follow its ten phases, each one green before the next. AI assistance and how its output
-was checked are described in [AI_USAGE.md](AI_USAGE.md); the instruction file given to
-the assistant is [CLAUDE.md](CLAUDE.md).
+was checked are described in [AI_USAGE.md](AI_USAGE.md).
