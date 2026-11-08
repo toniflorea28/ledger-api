@@ -49,6 +49,9 @@ management:
 
 ledger:
   instance-id: ${LEDGER_INSTANCE_ID:local}
+  idempotency:
+    ttl: PT24H
+    sweep-interval: PT10M
   topics:
     payment-settled: payments.settled
     payment-settled-dlt: payments.settled.dlt

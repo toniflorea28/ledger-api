@@ -46,7 +46,7 @@ binary is used.
 | 2. API contract: OpenAPI spec, generated interfaces, message schemas | done |
 | 3. Domain model: money, accounts, posting rules, reversal, unit tests | done |
 | 4. Persistence and posting: schema, ordered row locks, REST, problem details, atomicity/concurrency tests | done |
-| 5. Idempotency | pending |
+| 5. Idempotency: key stored in the same transaction, refusals remembered, concurrent retries | done |
 | 6. Settlement consumer | pending |
 | 7. Outbox relay | pending |
 | 8. Nice-to-haves | pending |

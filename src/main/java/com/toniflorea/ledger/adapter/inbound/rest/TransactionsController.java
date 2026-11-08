@@ -25,21 +25,25 @@ public class TransactionsController implements TransactionsApi {
 	private final RecordTransaction recordTransaction;
 	private final ReverseTransaction reverseTransaction;
 	private final TransactionQueries queries;
+	private final IdempotentRequests idempotent;
 
 	public TransactionsController(RecordTransaction recordTransaction, ReverseTransaction reverseTransaction,
-			TransactionQueries queries) {
+			TransactionQueries queries, IdempotentRequests idempotent) {
 		this.recordTransaction = recordTransaction;
 		this.reverseTransaction = reverseTransaction;
 		this.queries = queries;
+		this.idempotent = idempotent;
 	}
 
 	@Override
 	public ResponseEntity<TransactionDto> recordTransaction(String idempotencyKey,
 			RecordTransactionRequestDto request) {
-		List<RecordTransaction.Entry> entries = request.getEntries().stream().map(this::toEntry).toList();
-		Transaction transaction = recordTransaction
-				.record(new RecordTransaction.Command(request.getDescription(), entries));
-		return created(transaction);
+		return idempotent.execute("recordTransaction", idempotencyKey, TransactionsApi.PATH_RECORD_TRANSACTION,
+				request, TransactionDto.class, () -> {
+					List<RecordTransaction.Entry> entries = request.getEntries().stream().map(this::toEntry).toList();
+					return created(recordTransaction
+							.record(new RecordTransaction.Command(request.getDescription(), entries)));
+				});
 	}
 
 	@Override
@@ -50,10 +54,13 @@ public class TransactionsController implements TransactionsApi {
 	@Override
 	public ResponseEntity<TransactionDto> reverseTransaction(UUID transactionId, String idempotencyKey,
 			ReverseTransactionRequestDto request) {
-		Optional<String> description = Optional.ofNullable(request).map(ReverseTransactionRequestDto::getDescription);
-		Transaction reversal = reverseTransaction
-				.reverse(new ReverseTransaction.Command(TransactionId.of(transactionId), description));
-		return created(reversal);
+		String path = TransactionsApi.PATH_REVERSE_TRANSACTION.replace("{transactionId}", transactionId.toString());
+		return idempotent.execute("reverseTransaction", idempotencyKey, path, request, TransactionDto.class, () -> {
+			Optional<String> description = Optional.ofNullable(request)
+					.map(ReverseTransactionRequestDto::getDescription);
+			return created(reverseTransaction
+					.reverse(new ReverseTransaction.Command(TransactionId.of(transactionId), description)));
+		});
 	}
 
 	private RecordTransaction.Entry toEntry(EntryRequestDto dto) {

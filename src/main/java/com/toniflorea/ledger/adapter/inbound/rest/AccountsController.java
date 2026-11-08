@@ -22,18 +22,23 @@ public class AccountsController implements AccountsApi {
 
 	private final OpenAccount openAccount;
 	private final AccountQueries queries;
+	private final IdempotentRequests idempotent;
 
-	public AccountsController(OpenAccount openAccount, AccountQueries queries) {
+	public AccountsController(OpenAccount openAccount, AccountQueries queries, IdempotentRequests idempotent) {
 		this.openAccount = openAccount;
 		this.queries = queries;
+		this.idempotent = idempotent;
 	}
 
 	@Override
 	public ResponseEntity<AccountDto> openAccount(String idempotencyKey, OpenAccountRequestDto request) {
-		Account account = openAccount.open(new OpenAccount.Command(request.getCurrency(),
-				Optional.ofNullable(request.getOverdraftLimit())));
-		return ResponseEntity.created(URI.create(AccountsApi.PATH_GET_ACCOUNT.replace("{accountId}",
-				account.id().toString()))).body(RestMapper.toDto(account));
+		return idempotent.execute("openAccount", idempotencyKey, AccountsApi.PATH_OPEN_ACCOUNT, request,
+				AccountDto.class, () -> {
+					Account account = openAccount.open(new OpenAccount.Command(request.getCurrency(),
+							Optional.ofNullable(request.getOverdraftLimit())));
+					URI location = URI.create(AccountsApi.PATH_GET_ACCOUNT.replace("{accountId}", account.id().toString()));
+					return ResponseEntity.created(location).body(RestMapper.toDto(account));
+				});
 	}
 
 	@Override

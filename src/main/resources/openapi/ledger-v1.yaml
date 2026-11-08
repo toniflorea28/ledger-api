@@ -12,9 +12,12 @@ info:
     Amounts are decimal strings ("125.50", "15000"), never JSON numbers, with at most
     as many decimal places as the currency allows (EUR 2, USD 2, JPY 0).
 
-    Every POST requires an `Idempotency-Key` header. Retrying with the same key and
-    the same body returns the first attempt's answer; the same key with a different
-    body is refused with 409.
+    Every POST requires an `Idempotency-Key` header, unique per intended operation.
+    Retrying with the same key and the same body returns the first attempt's answer,
+    success or refusal, byte for byte, from any instance, for 24 hours. The same key
+    with a different body is refused with 409 IDEMPOTENCY_KEY_REUSED. A retry that
+    lands while the first attempt is still running waits for it; if it cannot, it
+    gets 409 IDEMPOTENCY_KEY_IN_PROGRESS and should retry shortly.
 
     Errors are RFC 9457 problem details (`application/problem+json`). Each problem
     carries `errors[]`, where `code` says what rule failed and `pointer` is a JSON
@@ -422,6 +425,7 @@ components:
         - MALFORMED_REQUEST
         - IDEMPOTENCY_KEY_MISSING
         - IDEMPOTENCY_KEY_REUSED
+        - IDEMPOTENCY_KEY_IN_PROGRESS
         - NOT_FOUND
         - INVALID_CURRENCY_CODE
         - UNSUPPORTED_CURRENCY

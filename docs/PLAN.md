@@ -82,8 +82,12 @@ the first commits or rolls back. Then it either hits a duplicate-key error (read
 return the stored response) or succeeds (the first rolled back; proceed). MySQL gives
 us "wait for the in-flight twin" for free, across instances.
 
-Refusals (4xx) are also remembered: the business tx is rolled back, then a second
-short tx stores the key with the error response.
+Refusals (4xx) are also remembered. The operation runs in a nested transaction (a
+savepoint) inside the key's transaction: a refusal rolls back to the savepoint, which
+undoes the effects but keeps the key row and its lock, and the refusal is stored as the
+response before the same commit. Waiting retries therefore never see the lock released
+and simply replay. (An earlier draft used a second transaction for refusals; releasing
+the lock made twenty concurrent retries race each other.)
 
 Different request, same key: fingerprint (SHA-256 of method + path + canonical body)
 mismatch → `409 IDEMPOTENCY_KEY_REUSED`. Keys expire (e.g. 24 h) via a sweeper.
