@@ -2,7 +2,7 @@ spring:
   application:
     name: ledger
   datasource:
-    url: ${LEDGER_DB_URL:jdbc:mysql://localhost:3306/ledger}
+    url: ${LEDGER_DB_URL:jdbc:mysql://localhost:3306/ledger?connectionTimeZone=UTC}
     username: ${LEDGER_DB_USER:ledger}
     password: ${LEDGER_DB_PASSWORD:ledger}
     hikari:
@@ -25,6 +25,9 @@ spring:
         enable.idempotence: true
     listener:
       ack-mode: manual_immediate
+
+  jackson:
+    default-property-inclusion: non_null
 
 server:
   port: 8080

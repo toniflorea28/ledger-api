@@ -20,7 +20,8 @@ public class TestcontainersConfiguration {
 				.withDatabaseName("ledger")
 				.withUsername("ledger")
 				.withPassword("ledger")
-				.withCommand("--default-time-zone=+00:00", "--transaction-isolation=READ-COMMITTED");
+				.withUrlParam("connectionTimeZone", "UTC")
+				.withCommand("--default-time-zone=+00:00", "--transaction-isolation=READ-COMMITTED", "--skip-log-bin");
 	}
 
 	@Bean

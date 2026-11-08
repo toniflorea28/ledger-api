@@ -8,6 +8,7 @@ services:
       --character-set-server=utf8mb4
       --collation-server=utf8mb4_0900_ai_ci
       --transaction-isolation=READ-COMMITTED
+      --skip-log-bin
     environment:
       MYSQL_DATABASE: ledger
       MYSQL_USER: ledger
@@ -71,7 +72,7 @@ services:
     environment: &ledger-env
       SPRING_PROFILES_ACTIVE: docker
       LEDGER_INSTANCE_ID: ledger-1
-      LEDGER_DB_URL: jdbc:mysql://mysql:3306/ledger
+      LEDGER_DB_URL: jdbc:mysql://mysql:3306/ledger?connectionTimeZone=UTC
       LEDGER_DB_USER: ledger
       LEDGER_DB_PASSWORD: ledger
       LEDGER_KAFKA_BOOTSTRAP: kafka:9092

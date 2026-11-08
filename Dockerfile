@@ -20,4 +20,4 @@ USER ledger
 EXPOSE 8080
 HEALTHCHECK --interval=5s --timeout=3s --start-period=40s --retries=12 \
   CMD curl -fsS http://localhost:8080/actuator/health/readiness || exit 1
-ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "org.springframework.boot.loader.launch.JarLauncher"]
+ENTRYPOINT ["java", "-XX:MaxRAMPercentage=75", "-Duser.timezone=UTC", "org.springframework.boot.loader.launch.JarLauncher"]

@@ -283,9 +283,7 @@ components:
       properties:
         currency:
           type: string
-          description: ISO 4217 code; must be one of the supported currencies
-          minLength: 3
-          maxLength: 3
+          description: ISO 4217 code; must be one of the supported currencies. Checked by the ledger, which distinguishes a non-ISO code from an unsupported one.
           example: EUR
         overdraftLimit:
           allOf: [ { $ref: '#/components/schemas/Amount' } ]
@@ -335,8 +333,8 @@ components:
           maxLength: 255
         entries:
           type: array
-          minItems: 2
           maxItems: 100
+          description: At least two; fewer is refused by the ledger with TOO_FEW_ENTRIES
           items: { $ref: '#/components/schemas/EntryRequest' }
 
     ReverseTransactionRequest:
