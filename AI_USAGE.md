@@ -12,9 +12,8 @@ the real database and broker.
 - The framing. I set the brief before any design work: treat this as a service that
   will run as several instances inside a large payment processor, and favour
   multi-instance correctness over simplicity everywhere the two conflict.
-- The design. I required a written plan before a line of code
-  ([docs/PLAN.md](docs/PLAN.md)): requirements distilled, every design decision with
-  the alternative it was chosen over, the schema, the package layout, the test matrix
+- The design. I required a written plan before a line of code: requirements
+  distilled, every design decision with the alternative it was chosen over, the schema, the package layout, the test matrix
   and the build order. I reviewed it, settled the open questions (base package, Maven,
   Kafka as the broker, server-generated ids, all three nice-to-haves in scope) and
   approved each decision before the scaffold was started. The choices the README

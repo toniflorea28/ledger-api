@@ -173,8 +173,8 @@ dead-lettered too. Nothing is dropped without a trace.
 
 ## Design
 
-The design was written before the code, in [docs/PLAN.md](docs/PLAN.md), and the
-commit history follows its phases. This section is the result.
+The design was written down and agreed before the code, and the commit history
+follows its phases. This section is the result.
 
 ### Structure
 
@@ -405,6 +405,6 @@ Skipped, and why:
 
 ## How it was built
 
-[docs/PLAN.md](docs/PLAN.md) is the design written before any code, and the commits
-follow its ten phases, each one green before the next. AI assistance and how its output
-was checked are described in [AI_USAGE.md](AI_USAGE.md).
+The design was settled before any code, and the commits follow its ten phases, each
+one green before the next. AI assistance and how its output was checked are described
+in [AI_USAGE.md](AI_USAGE.md).
