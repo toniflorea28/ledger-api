@@ -44,7 +44,7 @@ binary is used.
 |---|---|
 | 1. Scaffold: build, compose stack, run script, wiring test | done |
 | 2. API contract: OpenAPI spec, generated interfaces, message schemas | done |
-| 3. Domain model | pending |
+| 3. Domain model: money, accounts, posting rules, reversal, unit tests | done |
 | 4. Persistence and posting | pending |
 | 5. Idempotency | pending |
 | 6. Settlement consumer | pending |
